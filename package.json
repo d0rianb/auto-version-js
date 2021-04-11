@@ -1,0 +1,38 @@
+{
+    "name": "auto-version-js",
+    "version": "0.0.1",
+    "description": "An auto version library for NPM",
+    "main": "lib/main.js",
+    "scripts": {
+        "dev": "nodemon lib/main.js",
+        "docs": "npw jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md ",
+        "publish": "npm run docs && npm publish"
+    },
+    "jest": {
+        "verbose": true,
+        "testRegex": "./test/.*.js$",
+        "rootDir": ".",
+        "testPathIgnorePatterns": [
+            "/node_modules/"
+        ]
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/d0rianb/auto-version-js.git"
+    },
+    "keywords": [],
+    "author": "D0rian <dorian.beauchesne@icloud.com>",
+    "license": "MIT",
+    "bugs": {
+        "url": "https://github.com/d0rianb/auto-version-js/issues"
+    },
+    "homepage": "https://github.com/d0rianb/auto-version-js#readme",
+    "devDependencies": {
+        "jest": "^26.0.1",
+        "jsdoc-to-markdown": "^6.0.1",
+        "nodemon": "^2.0.4"
+    },
+    "dependencies": {
+        "pkg-dir": "^4.2.0"
+    }
+}
