@@ -8,7 +8,7 @@
     },
     "scripts": {
         "dev": "nodemon lib/main.js",
-        "manuel-test": "node test/test.js",
+        "manual-test": "node test/test.js",
         "bin-test": "./bin/auto-version.js",
         "test": "jest",
         "docs": "npx jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md ",
