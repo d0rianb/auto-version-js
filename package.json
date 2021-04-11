@@ -12,7 +12,7 @@
         "patch": "npx auto-version --patch && git add . && git commit",
         "test": "jest",
         "docs": "npx jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md ",
-        "publish": "npm run docs && npm publish"
+        "publish-package": "npm run docs && npm publish"
     },
     "jest": {
         "verbose": true,
