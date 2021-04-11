@@ -1,9 +1,29 @@
 # Auto Version JS
 
-[![npm version](https://badge.fury.io/js/%40dorianb%2Flogger-js.svg)](https://badge.fury.io/js/%40dorianb%2Flogger-js)
-[![npm downloads](https://badgen.net/npm/dt/@dorianb/logger-js)](https://www.npmjs.com/package/@dorianb/logger-js)
+[![npm version](https://badgen.net/npm/v/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
+[![npm downloads](https://badgen.net/npm/dt/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
 
-`auto-version-js` is a npm library for JavaScript/NodeJS
+`auto-version-js` is a light & fast NPM library for **automatically increase the version number** of a package.
+
+## Installation
+First, install the npm package :
+```bash npm i -D auto-version-js```
+
+Then to increment the version number, simply run :
+```bash
+npx auto-version --patch  # +0.0.1
+npx auto-version --minor  # +0.1.0
+npx auto-version --major  # +1.0.0
+npx auto-version          # no args is equivalent to --patch
+```
+
+To implement it in your `package.json` file :
+```json
+"scripts": {
+    "publish": "npx auto-version && npm publish"
+}
+```
+
 
 ## Documentation
 
@@ -29,8 +49,8 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 
 * [AutoVersion](#AutoVersion)
-    * [.getVersion([dirname])](#AutoVersion.getVersion) ⇒ <code>string</code>
-    * [.setVersion(dirname, version, [indentation])](#AutoVersion.setVersion)
+    * [.getVersion()](#AutoVersion.getVersion) ⇒ <code>string</code>
+    * [.setVersion(version, [indentation])](#AutoVersion.setVersion)
     * [.parse(versionString)](#AutoVersion.parse) ⇒ [<code>VersionObject</code>](#VersionObject)
     * [.stringify(versionObject)](#AutoVersion.stringify) ⇒ <code>string</code>
     * [.toSemver(versionString)](#AutoVersion.toSemver) ⇒ <code>string</code>
@@ -41,27 +61,21 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 
 <a name="AutoVersion.getVersion"></a>
 
-#### AutoVersion.getVersion([dirname]) ⇒ <code>string</code>
+#### AutoVersion.getVersion() ⇒ <code>string</code>
 Return the current version of the project
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 **Returns**: <code>string</code> - the version number  
-
-| Param | Type | Default |
-| --- | --- | --- |
-| [dirname] | <code>string</code> | <code>&quot;__dirname&quot;</code> | 
-
 <br />
 <a name="AutoVersion.setVersion"></a>
 
-#### AutoVersion.setVersion(dirname, version, [indentation])
+#### AutoVersion.setVersion(version, [indentation])
 Write the version number into package.json
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
-| dirname | <code>string</code> |  | the directory containing the package.json file |
 | version | <code>string</code> |  | the version number |
 | [indentation] | <code>number</code> | <code>4</code> | the number of space to pretty print the package.json file |
 
