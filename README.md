@@ -29,7 +29,7 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 
 * [AutoVersion](#AutoVersion)
-    * [.getVersion(dirname)](#AutoVersion.getVersion) ⇒ <code>string</code>
+    * [.getVersion([dirname])](#AutoVersion.getVersion) ⇒ <code>string</code>
     * [.setVersion(dirname, version, [indentation])](#AutoVersion.setVersion)
     * [.parse(versionString)](#AutoVersion.parse) ⇒ [<code>VersionObject</code>](#VersionObject)
     * [.stringify(versionObject)](#AutoVersion.stringify) ⇒ <code>string</code>
@@ -41,15 +41,15 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 
 <a name="AutoVersion.getVersion"></a>
 
-#### AutoVersion.getVersion(dirname) ⇒ <code>string</code>
+#### AutoVersion.getVersion([dirname]) ⇒ <code>string</code>
 Return the current version of the project
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 **Returns**: <code>string</code> - the version number  
 
-| Param | Type |
-| --- | --- |
-| dirname | <code>string</code> | 
+| Param | Type | Default |
+| --- | --- | --- |
+| [dirname] | <code>string</code> | <code>&quot;__dirname&quot;</code> | 
 
 <br />
 <a name="AutoVersion.setVersion"></a>
