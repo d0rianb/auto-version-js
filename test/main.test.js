@@ -1,77 +1,43 @@
-const fs = require('fs')
-const Logger = require('../lib/main.js')
+// main.test.js
+const AutoVersion = require('../lib/main')
 
-const logsDir = './logs'
-const defaultFile = `logs.log`
+describe('Method testing', () => {
+    it('Should parse the version', () => {
+        expect(AutoVersion.parse('1.2.3')).toStrictEqual({major: 1, minor: 2, patch: 3})
+        expect(AutoVersion.parse('1.2')).toStrictEqual({major: 1, minor: 2, patch: 0})
+        expect(AutoVersion.parse('1')).toStrictEqual({major: 1, minor: 0, patch: 0})
 
-describe('Logs method in default file', () => {
-    afterEach(() => Logger.clear())
-
-    it('Should info in default file', () => {
-        const log = 'test info in default file'
-        Logger.info(log)
-        const content = fs.readFileSync(`${logsDir}/${defaultFile}`, { encoding: 'utf8' })
-        expect(content).toContain(log)
+        expect(AutoVersion.parse('91.102.3')).toStrictEqual({major: 91, minor: 102, patch: 3})
+        expect(AutoVersion.parse('v1.3.5')).toStrictEqual({major: 1, minor: 3, patch: 5})
     })
 
-    it('Should debug in default file', () => {
-        const log = 'test debug in default file'
-        Logger.debug(log)
-        const content = fs.readFileSync(`${logsDir}/${defaultFile}`, { encoding: 'utf8' })
-        expect(content).toContain(log)
+    it('Should stringify the version', () => {
+        expect(AutoVersion.stringify({major: 1, minor: 2, patch: 3})).toBe('1.2.3')
+        expect(AutoVersion.stringify({major: 2, minor: 0, patch: 0})).toBe('2.0.0')
+        expect(AutoVersion.stringify({major: 91, minor: 102, patch: 3})).toBe('91.102.3')
     })
 
-    it('Should warn in default file', () => {
-        const log = 'test warn in default file'
-        Logger.warn(log)
-        const content = fs.readFileSync(`${logsDir}/${defaultFile}`, { encoding: 'utf8' })
-        expect(content).toContain(log)
+    it('Should convert to SerVer standard', () => {
+        expect(AutoVersion.toSemver('1.3.5')).toBe('1.3.5')
+        expect(AutoVersion.toSemver('1.3')).toBe('1.3.0')
+        expect(AutoVersion.toSemver('1')).toBe('1.0.0')
+        expect(AutoVersion.toSemver('v2')).toBe('2.0.0')
+        expect(AutoVersion.toSemver('v1.3.5')).toBe('1.3.5')
+        expect(AutoVersion.toSemver('version 3')).toBe('3.0.0')
     })
 
-    it('Should error in default file', () => {
-        const log = 'test error in default file'
-        Logger.error(log)
-        const content = fs.readFileSync(`${logsDir}/${defaultFile}`, { encoding: 'utf8' })
-        expect(content).toContain(log)
+    it('Should update the version number for a new major', () => {
+        expect(AutoVersion.major('1.0.0')).toBe('2.0.0')
+        expect(AutoVersion.major('0.5.9')).toBe('1.0.0')
     })
 
-    it('Should fatal in default file', () => {
-        const log = 'test fatal in default file'
-        Logger.fatal(log)
-        const content = fs.readFileSync(`${logsDir}/${defaultFile}`, { encoding: 'utf8' })
-        expect(content).toContain(log)
+    it('Should update the version number for a new minor', () => {
+        expect(AutoVersion.minor('1.0.0')).toBe('1.1.0')
+        expect(AutoVersion.minor('0.5.8')).toBe('0.6.0')
     })
 
-})
-
-describe('Options modification', () => {
-    beforeAll(() => Logger.clear('all'))
-    afterEach(() => Logger.clear('test.log'))
-
-    it(`Should log 'Information' in test.log via call`, () => {
-        Logger.info('Information', 'test.log')
-        const content = fs.readFileSync(`${logsDir}/test.log`, { encoding: 'utf8' })
-        expect(content).toContain('Information')
-    })
-
-    it(`Should log 'Information' in test.log via options`, () => {
-        Logger.setOptions({ filename: 'test.log' })
-        Logger.info('Information')
-        const content = fs.readFileSync(`${logsDir}/test.log`, { encoding: 'utf8' })
-        expect(content).toContain('Information')
-    })
-})
-
-describe('Level modification', () => {
-    it('should add a new levels', () => {
-        const nbLevels = Object.keys(Logger.levels).length
-        Logger.addLevel('Test')
-        const nbNewLevels = Object.keys(Logger.levels).length
-        expect(nbNewLevels).toBeGreaterThan(nbLevels)
-    })
-
-    it('should return the TEST level', () => {
-        const testLevel = Logger.getLevel('Test')
-        expect(testLevel).toContain('TEST')
+    it('Should update the version number for a new patch', () => {
+        expect(AutoVersion.patch('1.0.0')).toBe('1.0.1')
+        expect(AutoVersion.patch('0.5.9')).toBe('0.5.10')
     })
 })

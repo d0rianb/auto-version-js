@@ -1,7 +1,6 @@
-const process = require('process')
-const Logger = require('../lib/main.js')
+const AutoVersion = require('../lib/main.js')
 
-
-Logger.on('error', err => console.log(err))
-Logger.error('test error')
-Logger.error('test error 2', 'logs.log', { noEvent: true })
+const version = AutoVersion.getVersion(__dirname)
+const newVersion = AutoVersion.minor(version)
+AutoVersion.setVersion(__dirname, newVersion)
+console.log(newVersion)
