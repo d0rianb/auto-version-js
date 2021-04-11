@@ -3,11 +3,13 @@
 [![npm version](https://badgen.net/npm/v/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
 [![npm downloads](https://badgen.net/npm/dt/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
 
-`auto-version-js` is a light & fast NPM library for **automatically increase the version number** of a package.
+`auto-version-js` is a light & fast NPM library to **automatically increase the version number** of a package.
 
 ## Installation
 First, install the npm package :
-```bash npm i -D auto-version-js```
+```bash
+npm i -D auto-version-js
+```
 
 Then to increment the version number, simply run :
 ```bash
