@@ -2,6 +2,11 @@
 
 const AutoVersion = require('../lib/main.js')
 
+/* TODO :
+ *    - Add a --get option to retrieve the version (for ex to use it in commit)$a$
+ */
+
+
 const args = process.argv.slice(2).map(arg => arg.replace(/--/, ''))
 
 const version = AutoVersion.getVersion()
