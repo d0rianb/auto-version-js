@@ -51,7 +51,9 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 
 * [AutoVersion](#AutoVersion)
-    * [.getVersion()](#AutoVersion.getVersion) ⇒ <code>string</code>
+    * [.getPath()](#AutoVersion.getPath) ⇒ <code>string</code>
+    * [.getPackageJSON([pathname])](#AutoVersion.getPackageJSON) ⇒ <code>JSON</code>
+    * [.getVersion([pathname])](#AutoVersion.getVersion) ⇒ <code>string</code>
     * [.setVersion(version, [indentation])](#AutoVersion.setVersion)
     * [.parse(versionString)](#AutoVersion.parse) ⇒ [<code>VersionObject</code>](#VersionObject)
     * [.stringify(versionObject)](#AutoVersion.stringify) ⇒ <code>string</code>
@@ -61,13 +63,39 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
     * [.minor(version)](#AutoVersion.minor) ⇒ <code>string</code>
     * [.patch(version)](#AutoVersion.patch) ⇒ <code>string</code>
 
+<a name="AutoVersion.getPath"></a>
+
+#### AutoVersion.getPath() ⇒ <code>string</code>
+Return the path of the project
+
+<!-- Empty to hide the `**Kind**` tag in documentation -->
+**Returns**: <code>string</code> - the path of the project where the package.json is located  
+<br />
+<a name="AutoVersion.getPackageJSON"></a>
+
+#### AutoVersion.getPackageJSON([pathname]) ⇒ <code>JSON</code>
+Return the package.json file of the project
+
+<!-- Empty to hide the `**Kind**` tag in documentation -->
+**Returns**: <code>JSON</code> - the package.json  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [pathname] | <code>string</code> | the path of the package.json |
+
+<br />
 <a name="AutoVersion.getVersion"></a>
 
-#### AutoVersion.getVersion() ⇒ <code>string</code>
+#### AutoVersion.getVersion([pathname]) ⇒ <code>string</code>
 Return the current version of the project
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 **Returns**: <code>string</code> - the version number  
+
+| Param | Type | Description |
+| --- | --- | --- |
+| [pathname] | <code>string</code> | the path of the package.json |
+
 <br />
 <a name="AutoVersion.setVersion"></a>
 
