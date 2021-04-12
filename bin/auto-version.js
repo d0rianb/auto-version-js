@@ -3,7 +3,7 @@
 const AutoVersion = require('../lib/main.js')
 
 /* TODO :
- *    - Add a --get option to retrieve the version (for ex to use it in commit)$a$
+ *    - Add a --get option to retrieve the version (for ex to use it in commit)
  */
 
 
