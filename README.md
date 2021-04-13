@@ -51,10 +51,10 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
 <!-- Empty to hide the `**Kind**` tag in documentation -->
 
 * [AutoVersion](#AutoVersion)
-    * [.getPath()](#AutoVersion.getPath) ⇒ <code>string</code>
+    * [.getLocalPath()](#AutoVersion.getLocalPath) ⇒ <code>string</code>
     * [.getPackageJSON([pathname])](#AutoVersion.getPackageJSON) ⇒ <code>JSON</code>
     * [.getVersion([pathname])](#AutoVersion.getVersion) ⇒ <code>string</code>
-    * [.setVersion(version, [indentation])](#AutoVersion.setVersion)
+    * [.setVersion(version, [pathname], [indentation])](#AutoVersion.setVersion)
     * [.parse(versionString)](#AutoVersion.parse) ⇒ [<code>VersionObject</code>](#VersionObject)
     * [.stringify(versionObject)](#AutoVersion.stringify) ⇒ <code>string</code>
     * [.toSemver(versionString)](#AutoVersion.toSemver) ⇒ <code>string</code>
@@ -63,9 +63,9 @@ In this library, `versionString` represents a version as a string : `'1.2.3'` an
     * [.minor(version)](#AutoVersion.minor) ⇒ <code>string</code>
     * [.patch(version)](#AutoVersion.patch) ⇒ <code>string</code>
 
-<a name="AutoVersion.getPath"></a>
+<a name="AutoVersion.getLocalPath"></a>
 
-#### AutoVersion.getPath() ⇒ <code>string</code>
+#### AutoVersion.getLocalPath() ⇒ <code>string</code>
 Return the path of the project
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
@@ -96,10 +96,15 @@ Return the current version of the project
 | --- | --- | --- |
 | [pathname] | <code>string</code> | the path of the package.json |
 
+**Example**  
+```js
+AutoVersion.getVersion()              // --> the version of the current project | ex : 0.5.2
+AutoVersion.getVersion('../any/dir')  // --> the version of the project in this directory
+```
 <br />
 <a name="AutoVersion.setVersion"></a>
 
-#### AutoVersion.setVersion(version, [indentation])
+#### AutoVersion.setVersion(version, [pathname], [indentation])
 Write the version number into package.json
 
 <!-- Empty to hide the `**Kind**` tag in documentation -->
@@ -107,8 +112,15 @@ Write the version number into package.json
 | Param | Type | Default | Description |
 | --- | --- | --- | --- |
 | version | <code>string</code> |  | the version number |
+| [pathname] | <code>string</code> |  | the path of the package.json |
 | [indentation] | <code>number</code> | <code>4</code> | the number of space to pretty print the package.json file |
 
+**Example**  
+```js
+AutoVersion.setVersion('0.2.3')
+AutoVersion.setVersion('0.2.3', '../any/dir')
+AutoVersion.setVersion('0.2.3', '../any/dir', 4)  // the package.json will be indented with 4 spaces
+```
 <br />
 <a name="AutoVersion.parse"></a>
 
@@ -121,6 +133,10 @@ Extract the major, minor & patch number from a semver version number
 | --- |
 | versionString | 
 
+**Example**  
+```js
+AutoVersion.parse('1.4.2')  // --> {major: 1, minor: 4, patch: 2}
+```
 <br />
 <a name="AutoVersion.stringify"></a>
 
@@ -134,6 +150,10 @@ Stringify a versionObject
 | --- |
 | versionObject | 
 
+**Example**  
+```js
+AutoVersion.stringify({major: 1, minor: 4, patch: 2})  // --> '1.4.2'
+```
 <br />
 <a name="AutoVersion.toSemver"></a>
 
@@ -147,6 +167,13 @@ Convert a version into semver standard
 | --- |
 | versionString | 
 
+**Example**  
+```js
+AutoVersion.toSemver('1.3.5')      // --> '1.3.5'
+AutoVersion.toSemver('1.3')        // --> '1.3.0'
+AutoVersion.toSemver('v1.3.5')     // -->  '1.3.5'
+AutoVersion.toSemver('version 3')  // -->  '3.0.0'
+```
 <br />
 <a name="AutoVersion.increment"></a>
 
@@ -161,6 +188,12 @@ Increment the version number
 | version | <code>string</code> |  |
 | level | <code>string</code> | major | minor | patch |
 
+**Example**  
+```js
+AutoVersion.increment('0.4.7', 'patch')  // --> '0.4.8'
+AutoVersion.increment('0.4.7', 'minor')  // --> '0.5.0'
+AutoVersion.increment('0.4.7', 'major')  // --> '1.0.0'
+```
 <br />
 <a name="AutoVersion.major"></a>
 
@@ -174,6 +207,11 @@ Update the version number for a major update
 | --- | --- |
 | version | <code>string</code> | 
 
+**Example**  
+```js
+AutoVersion.major('1.0.0')  // --> '2.0.0'
+AutoVersion.major('0.5.9')  // --> '1.0.0'
+```
 <br />
 <a name="AutoVersion.minor"></a>
 
@@ -187,6 +225,11 @@ Update the version number for a minor update
 | --- | --- |
 | version | <code>string</code> | 
 
+**Example**  
+```js
+AutoVersion.minor('1.0.0')  // --> '1.1.0'
+AutoVersion.minor('0.5.8')  // --> '0.6.0'
+```
 <br />
 <a name="AutoVersion.patch"></a>
 
@@ -200,6 +243,11 @@ Update the version number for a patch update
 | --- | --- |
 | version | <code>string</code> | 
 
+**Example**  
+```js
+AutoVersion.patch('1.0.0')  // --> '1.0.1'
+AutoVersion.patch('0.5.9')  // --> '0.5.10'
+```
 <br />
 <br />
 <a name="VersionObject"></a>
@@ -214,6 +262,10 @@ Update the version number for a patch update
 | minor | <code>number</code> | 
 | patch | <code>number</code> | 
 
+**Example**  
+```js
+{major: 1, minor: 3, patch: 7}  // represents 1.3.7
+```
 <br />
 
 * * *
