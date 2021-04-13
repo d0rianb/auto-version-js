@@ -1,6 +1,6 @@
 {
     "name": "auto-version-js",
-    "version": "0.3.2",
+    "version": "0.3.3",
     "description": "An auto version library for NPM",
     "main": "lib/main.js",
     "bin": {
@@ -9,10 +9,10 @@
     "scripts": {
         "dev": "nodemon lib/main.js",
         "manual-test": "node test/test.js",
-        "patch": "npx auto-version --patch && git add . && git commit",
+        "patch": "npx auto-version --patch && npm run docs && git add . && git commit && git push",
         "test": "jest",
         "docs": "npx jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md ",
-        "publish-package": "npm run docs && npm publish"
+        "publish-package": "npm run patch && npm publish"
     },
     "jest": {
         "verbose": true,
@@ -27,7 +27,11 @@
         "type": "git",
         "url": "git+https://github.com/d0rianb/auto-version-js.git"
     },
-    "keywords": [],
+    "keywords": [
+        "automatic",
+        "version",
+        "increment"
+    ],
     "author": "D0rian <dorian.beauchesne@icloud.com>",
     "license": "MIT",
     "bugs": {
