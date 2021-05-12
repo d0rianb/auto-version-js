@@ -1,6 +1,6 @@
 {
     "name": "auto-version-js",
-    "version": "0.3.7",
+    "version": "0.3.9",
     "description": "An auto version library for NPM",
     "main": "lib/main.js",
     "bin": {
