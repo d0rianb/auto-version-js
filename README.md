@@ -1,7 +1,7 @@
 # Auto Version JS
 
-[![npm version](https://badgen.net/npm/v/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
-[![npm downloads](https://badgen.net/npm/dt/auto-version-js)](https://www.npmjs.com/package/npm-auto-version)
+[![npm version](https://badgen.net/npm/v/auto-version-js)](https://www.npmjs.com/package/auto-version-js)
+[![npm downloads](https://badgen.net/npm/dt/auto-version-js)](https://www.npmjs.com/package/auto-version-js)
 
 `auto-version-js` is a light & fast NPM library to **automatically increase the version number** of a package.
 
