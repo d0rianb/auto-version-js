@@ -1,6 +1,6 @@
 {
     "name": "auto-version-js",
-    "version": "0.3.9",
+    "version": "0.3.11",
     "description": "An auto version library for NPM",
     "main": "lib/main.js",
     "bin": {
@@ -9,10 +9,12 @@
     "scripts": {
         "dev": "nodemon lib/main.js",
         "manual-test": "node test/test.js",
-        "patch": "npx auto-version --patch && npm run docs && git add . && git commit",
+        "patch": "npx auto-version --patch --release",
+        "minor": "npx auto-version --minor --release",
+        "major": "npx auto-version --major --release",
         "test": "jest",
-        "docs": "npx jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md ",
-        "publish": "npm run patch && npm publish"
+        "docs": "npx jsdoc2md --no-cache --heading-depth=3 --partial docs/*.hbs -t docs/README.hbs lib/*.js > README.md",
+        "publish": "npm run docs && npx auto-version --patch --release --push && npm publish"
     },
     "jest": {
         "verbose": true,
