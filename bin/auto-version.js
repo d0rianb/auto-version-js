@@ -113,6 +113,7 @@ const run = (argv, dependencies = {}) => {
     const autoVersion = dependencies.AutoVersion || AutoVersion
     const autoGit = dependencies.AutoGit || autoVersion.AutoGit
     const log = dependencies.log || console.log
+    const warn = dependencies.warn || console.warn
     const options = parseArgs(argv)
 
     if (options.help) {
@@ -129,6 +130,16 @@ const run = (argv, dependencies = {}) => {
     if (options.get) {
         log(version)
         return version
+    }
+
+    if (!autoGit.isGitRepo()) {
+        warn('Warning: not a Git repository. No changes were made.')
+        return
+    }
+
+    if (!autoGit.isClean()) {
+        warn('Warning: Git working tree is not clean. No changes were made.')
+        return
     }
 
     const newVersion = autoVersion.increment(version, options.mode)

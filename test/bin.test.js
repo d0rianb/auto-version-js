@@ -2,6 +2,8 @@ const { parseArgs, run } = require('../bin/auto-version')
 
 const createDependencies = () => {
     const AutoGit = {
+        isGitRepo: vi.fn().mockReturnValue(true),
+        isClean: vi.fn().mockReturnValue(true),
         bumpWorkspace: vi.fn(),
         stageAll: vi.fn(),
         commit: vi.fn(),
@@ -19,7 +21,8 @@ const createDependencies = () => {
     return {
         AutoGit,
         AutoVersion,
-        log: vi.fn()
+        log: vi.fn(),
+        warn: vi.fn()
     }
 }
 
@@ -64,6 +67,39 @@ describe('auto-version CLI', () => {
         expect(dependencies.AutoVersion.setVersion).toHaveBeenCalledWith('1.2.4')
         expect(dependencies.AutoGit.release).not.toHaveBeenCalled()
         expect(dependencies.AutoGit.tag).not.toHaveBeenCalled()
+    })
+
+    it('does nothing and warns when the Git working tree is not clean', () => {
+        const dependencies = createDependencies()
+        dependencies.AutoGit.isClean.mockReturnValue(false)
+
+        expect(run([], dependencies)).toBeUndefined()
+        expect(dependencies.warn).toHaveBeenCalledWith(
+            'Warning: Git working tree is not clean. No changes were made.'
+        )
+        expect(dependencies.AutoVersion.increment).not.toHaveBeenCalled()
+        expect(dependencies.AutoVersion.setVersion).not.toHaveBeenCalled()
+    })
+
+    it('does nothing and warns outside a Git repository', () => {
+        const dependencies = createDependencies()
+        dependencies.AutoGit.isGitRepo.mockReturnValue(false)
+
+        expect(run([], dependencies)).toBeUndefined()
+        expect(dependencies.warn).toHaveBeenCalledWith(
+            'Warning: not a Git repository. No changes were made.'
+        )
+        expect(dependencies.AutoGit.isClean).not.toHaveBeenCalled()
+        expect(dependencies.AutoVersion.setVersion).not.toHaveBeenCalled()
+    })
+
+    it('allows reading the version when the Git working tree is not clean', () => {
+        const dependencies = createDependencies()
+        dependencies.AutoGit.isClean.mockReturnValue(false)
+
+        expect(run(['--get'], dependencies)).toBe('1.2.3')
+        expect(dependencies.AutoGit.isGitRepo).not.toHaveBeenCalled()
+        expect(dependencies.AutoGit.isClean).not.toHaveBeenCalled()
     })
 
     it('releases without a tag prefix by default', () => {

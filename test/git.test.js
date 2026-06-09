@@ -35,6 +35,21 @@ describe('AutoGit', () => {
         })
     })
 
+    describe('isClean', () => {
+        it('should return true when git status is empty', () => {
+            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
+
+            expect(AutoGit.isClean('/some/path')).toBe(true)
+            expect(spy).toHaveBeenCalledWith('git status --porcelain', '/some/path')
+        })
+
+        it('should return false when git status contains changes', () => {
+            vi.spyOn(AutoGit, 'exec').mockReturnValue(' M package.json')
+
+            expect(AutoGit.isClean('/some/path')).toBe(false)
+        })
+    })
+
     describe('isWorkspace', () => {
         let tmpDir
         beforeEach(() => { tmpDir = mkTmpDir() })
