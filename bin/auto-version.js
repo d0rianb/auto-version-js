@@ -11,10 +11,10 @@ Levels:
 
 Options:
   -g, --get               Print the current version without changing it
-  -c, --commit            Stage files and commit the new version
-  -t, --tag               Create an annotated tag (requires --commit)
+  -c, --commit            Stage files and commit the new version (default)
+  -t, --tag               Create an annotated tag (default)
   -r, --release           Stage, commit, and tag the new version
-      --push              Push commits and tags (requires --commit)
+      --push              Push the commit and tag
   -w, --workspace         Increment all pnpm workspace packages
       --prefix <value>    Prefix for commit messages and tags (default: none)
   -m, --message <value>   Custom commit message
@@ -39,7 +39,10 @@ const readValue = (argv, index, option) => {
 const parseArgs = argv => {
     const options = {
         mode: 'patch',
-        prefix: ''
+        // Commit & tag by default
+        prefix: '',
+        commit: true,
+        tag: true
     }
 
     for (let index = 0; index < argv.length; index++) {
@@ -119,10 +122,6 @@ const run = (argv, dependencies = {}) => {
     if (options.help) {
         log(HELP)
         return
-    }
-
-    if (!options.release && !options.commit && (options.tag || options.push)) {
-        throw new Error('--tag and --push require --commit or --release')
     }
 
     const version = autoVersion.getVersion()

@@ -27,10 +27,12 @@ const createDependencies = () => {
 }
 
 describe('auto-version CLI', () => {
-    it('uses patch and no prefix by default', () => {
+    it('uses patch, commit, tag, and no prefix by default', () => {
         expect(parseArgs([])).toEqual({
             mode: 'patch',
-            prefix: ''
+            prefix: '',
+            commit: true,
+            tag: true
         })
     })
 
@@ -45,6 +47,8 @@ describe('auto-version CLI', () => {
         ])).toEqual({
             mode: 'minor',
             prefix: 'release-',
+            commit: true,
+            tag: true,
             release: true,
             push: true,
             message: 'chore: release'
@@ -59,14 +63,21 @@ describe('auto-version CLI', () => {
         expect(dependencies.AutoVersion.setVersion).not.toHaveBeenCalled()
     })
 
-    it('increments the version without running Git by default', () => {
+    it('increments, commits, and tags by default', () => {
         const dependencies = createDependencies()
 
         expect(run([], dependencies)).toBe('1.2.4')
         expect(dependencies.AutoVersion.increment).toHaveBeenCalledWith('1.2.3', 'patch')
         expect(dependencies.AutoVersion.setVersion).toHaveBeenCalledWith('1.2.4')
+        expect(dependencies.AutoGit.stageAll).toHaveBeenCalled()
+        expect(dependencies.AutoGit.commit).toHaveBeenCalledWith(expect.objectContaining({
+            version: '1.2.4',
+            prefix: ''
+        }))
+        expect(dependencies.AutoGit.tag).toHaveBeenCalledWith('1.2.4', '')
+        expect(dependencies.AutoGit.commit.mock.invocationCallOrder[0])
+            .toBeLessThan(dependencies.AutoGit.tag.mock.invocationCallOrder[0])
         expect(dependencies.AutoGit.release).not.toHaveBeenCalled()
-        expect(dependencies.AutoGit.tag).not.toHaveBeenCalled()
     })
 
     it('does nothing and warns when the Git working tree is not clean', () => {
@@ -129,22 +140,18 @@ describe('auto-version CLI', () => {
         expect(dependencies.AutoGit.tag).toHaveBeenCalledWith('1.2.4', 'release-')
     })
 
-    it.each(['--tag', '--push'])('rejects %s without a commit', option => {
+    it('pushes after the default commit and tag', () => {
         const dependencies = createDependencies()
 
-        expect(() => run([option], dependencies))
-            .toThrow('--tag and --push require --commit or --release')
-        expect(dependencies.AutoVersion.getVersion).not.toHaveBeenCalled()
-        expect(dependencies.AutoVersion.setVersion).not.toHaveBeenCalled()
-    })
-
-    it('allows push after a separate commit', () => {
-        const dependencies = createDependencies()
-
-        run(['--commit', '--push'], dependencies)
+        run(['--push'], dependencies)
 
         expect(dependencies.AutoGit.commit).toHaveBeenCalled()
+        expect(dependencies.AutoGit.tag).toHaveBeenCalled()
         expect(dependencies.AutoGit.push).toHaveBeenCalled()
+        expect(dependencies.AutoGit.commit.mock.invocationCallOrder[0])
+            .toBeLessThan(dependencies.AutoGit.tag.mock.invocationCallOrder[0])
+        expect(dependencies.AutoGit.tag.mock.invocationCallOrder[0])
+            .toBeLessThan(dependencies.AutoGit.push.mock.invocationCallOrder[0])
     })
 
     it('increments pnpm workspace packages when requested', () => {
