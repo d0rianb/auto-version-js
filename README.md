@@ -26,6 +26,22 @@ To implement it in your `package.json` file :
 }
 ```
 
+## Changelog
+
+### 1.0.0
+
+**Breaking changes**
+
+- `patch`, `minor`, and `major` are now commands, replacing `--patch`, `--minor`, and `--major`.
+- Commits and tags are created by default.
+- Tags no longer use the `v` prefix by default.
+- Version updates are skipped when the Git working tree is not clean.
+
+**Features**
+
+- Added Git commit, tag, release, push, custom prefix, and custom message support.
+- Added pnpm workspace versioning.
+- Added Vitest coverage for the library and CLI.
 
 ## Documentation
 

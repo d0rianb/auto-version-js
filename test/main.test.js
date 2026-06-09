@@ -32,6 +32,7 @@ describe('AutoVersion', () => {
             ['v2', '2.0.0'],
             ['v1.3.5', '1.3.5'],
             ['version 3', '3.0.0'],
+            ['version 3.1', '3.1.0'],
         ])('toSemver("%s") => "%s"', (input, expected) => {
             expect(AutoVersion.toSemver(input)).toBe(expected)
         })
