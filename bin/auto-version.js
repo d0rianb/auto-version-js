@@ -144,8 +144,17 @@ const run = (argv, dependencies = {}) => {
     const newVersion = autoVersion.increment(version, options.mode)
     autoVersion.setVersion(newVersion)
 
+    // Collect files to stage (only modified package.json files)
+    const filesToStage = ['package.json']
+
     if (options.workspace) {
-        autoGit.bumpWorkspace(options.mode)
+        const bumpResults = autoGit.bumpWorkspace(options.mode)
+        // Add workspace package.json files to staging list
+        const workspacePackages = autoGit.getWorkspacePackages ? autoGit.getWorkspacePackages() : []
+        workspacePackages.forEach(pkgPath => {
+            const relative = require('path').relative(process.cwd(), require('path').resolve(pkgPath, 'package.json'))
+            filesToStage.push(relative)
+        })
     }
 
     const gitOptions = {
@@ -157,10 +166,10 @@ const run = (argv, dependencies = {}) => {
     }
 
     if (options.release) {
-        autoGit.release(gitOptions)
+        autoGit.release(gitOptions, filesToStage)
     } else {
         if (options.commit) {
-            autoGit.stageAll()
+            autoGit.stageFiles ? autoGit.stageFiles(filesToStage) : autoGit.stageAll()
             autoGit.commit(gitOptions)
         }
         if (options.tag) autoGit.tag(newVersion, options.prefix)
