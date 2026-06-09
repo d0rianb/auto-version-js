@@ -8,290 +8,313 @@ const AutoGit = require('../lib/git')
 
 // --- Helpers ---
 
-const mkTmpDir = () => fs.mkdtempSync(path.join(os.tmpdir(), 'auto-version-git-test-'))
-const cleanDir = dir => fs.rmSync(dir, { recursive: true, force: true })
-
-const createPackage = (dir, name, version) => {
-    fs.mkdirSync(dir, { recursive: true })
-    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify({ name, version }, null, 4))
+const withTmpDir = fn => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'auto-version-git-test-'))
+    try {
+        return fn(dir)
+    } finally {
+        fs.rmSync(dir, { recursive: true, force: true })
+    }
 }
+
+const createPackage = (dir, name, version, deps = {}) => {
+    fs.mkdirSync(dir, { recursive: true })
+    const pkg = { name, version }
+    if (Object.keys(deps).length > 0) pkg.dependencies = deps
+    fs.writeFileSync(path.join(dir, 'package.json'), JSON.stringify(pkg, null, 4))
+}
+
+/** Mock all git methods needed for a release flow */
+const mockRelease = (overrides = {}) => ({
+    isGitRepo: vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(true),
+    stageAll: vi.spyOn(AutoGit, 'stageAll').mockReturnValue(undefined),
+    stageFiles: vi.spyOn(AutoGit, 'stageFiles').mockReturnValue(undefined),
+    commit: vi.spyOn(AutoGit, 'commit').mockReturnValue(undefined),
+    tag: vi.spyOn(AutoGit, 'tag').mockReturnValue(overrides.tagName || '1.2.3'),
+    push: vi.spyOn(AutoGit, 'push').mockReturnValue(undefined),
+    ...overrides
+})
+
+/** Mock execSafe so tag() passes the "already exists?" check + the actual git tag call */
+const mockTagExec = () => vi.spyOn(AutoGit, 'execSafe')
+    .mockImplementationOnce(() => { throw new Error('not found') }) // rev-parse => tag doesn't exist
+    .mockImplementationOnce(() => '') // git tag -a
 
 // --- Tests ---
 
 describe('AutoGit', () => {
-    afterEach(() => {
-        vi.restoreAllMocks()
-    })
+    afterEach(() => vi.restoreAllMocks())
+
+    // --- Simple git queries ---
 
     describe('isGitRepo', () => {
-        it('should return true when exec succeeds', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('true')
+        it('returns true when inside a repo', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockReturnValue('true')
             expect(AutoGit.isGitRepo('/some/path')).toBe(true)
         })
 
-        it('should return false when exec throws', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error('not a git repo') })
-            expect(AutoGit.isGitRepo('/tmp/not-a-repo')).toBe(false)
+        it('returns false when not a repo', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockImplementation(() => { throw new Error() })
+            expect(AutoGit.isGitRepo('/tmp/nope')).toBe(false)
         })
     })
 
     describe('isClean', () => {
-        it('should return true when git status is empty', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-
-            expect(AutoGit.isClean('/some/path')).toBe(true)
-            expect(spy).toHaveBeenCalledWith('git status --porcelain', '/some/path')
+        it('returns true when porcelain is empty', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockReturnValue('')
+            expect(AutoGit.isClean('/p')).toBe(true)
         })
 
-        it('should return false when git status contains changes', () => {
-            vi.spyOn(AutoGit, 'exec').mockReturnValue(' M package.json')
-
-            expect(AutoGit.isClean('/some/path')).toBe(false)
+        it('returns false when there are changes', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockReturnValue(' M file')
+            expect(AutoGit.isClean('/p')).toBe(false)
         })
     })
+
+    // --- Workspace detection ---
 
     describe('isWorkspace', () => {
-        let tmpDir
-        beforeEach(() => { tmpDir = mkTmpDir() })
-        afterEach(() => { cleanDir(tmpDir) })
-
-        it('should return true when pnpm-workspace.yaml exists', () => {
-            fs.writeFileSync(path.join(tmpDir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
-            expect(AutoGit.isWorkspace(tmpDir)).toBe(true)
-        })
-
-        it('should return false when pnpm-workspace.yaml is absent', () => {
-            expect(AutoGit.isWorkspace(tmpDir)).toBe(false)
-        })
+        it('detects pnpm-workspace.yaml presence', () => withTmpDir(dir => {
+            expect(AutoGit.isWorkspace(dir)).toBe(false)
+            fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
+            expect(AutoGit.isWorkspace(dir)).toBe(true)
+        }))
     })
+
+    // --- Workspace packages ---
 
     describe('getWorkspacePackages', () => {
-        let tmpDir
-        beforeEach(() => { tmpDir = mkTmpDir() })
-        afterEach(() => { cleanDir(tmpDir) })
+        it('uses pnpm CLI and filters out root', () => {
+            const dir = '/project'
+            vi.spyOn(AutoGit, 'exec').mockReturnValue(JSON.stringify([
+                { path: '/project', name: 'root' },
+                { path: '/project/packages/core', name: '@s/core' }
+            ]))
 
-        it('should use the pnpm CLI when available', () => {
-            const fakePaths = [
-                { path: path.join(tmpDir, 'packages/core'), name: '@scope/core' },
-                { path: path.join(tmpDir, 'packages/cli'), name: '@scope/cli' }
-            ]
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue(JSON.stringify(fakePaths))
-
-            const result = AutoGit.getWorkspacePackages(tmpDir)
-
-            expect(result).toEqual([fakePaths[0].path, fakePaths[1].path])
+            expect(AutoGit.getWorkspacePackages(dir)).toEqual(['/project/packages/core'])
         })
 
-        it('should fall back to YAML parsing when pnpm CLI is unavailable', () => {
-            fs.writeFileSync(path.join(tmpDir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
-            createPackage(path.join(tmpDir, 'packages/core'), '@scope/core', '1.0.0')
-            createPackage(path.join(tmpDir, 'packages/cli'), '@scope/cli', '1.0.0')
+        it('falls back to YAML with wildcard glob', () => withTmpDir(dir => {
+            vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
+            fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
+            createPackage(path.join(dir, 'packages/a'), 'a', '1.0.0')
+            createPackage(path.join(dir, 'packages/b'), 'b', '1.0.0')
+            fs.mkdirSync(path.join(dir, 'packages/empty'), { recursive: true })
 
-            const spy = vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error('pnpm not found') })
-            const result = AutoGit.getWorkspacePackages(tmpDir)
-
+            const result = AutoGit.getWorkspacePackages(dir)
             expect(result).toHaveLength(2)
-            expect(result).toContain(path.resolve(tmpDir, 'packages/core'))
-            expect(result).toContain(path.resolve(tmpDir, 'packages/cli'))
-        })
+            expect(result).toContain(path.resolve(dir, 'packages/a'))
+            expect(result).toContain(path.resolve(dir, 'packages/b'))
+        }))
 
-        it('should ignore directories without a package.json', () => {
-            fs.writeFileSync(path.join(tmpDir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/*"\n')
-            createPackage(path.join(tmpDir, 'packages/core'), '@scope/core', '1.0.0')
-            fs.mkdirSync(path.join(tmpDir, 'packages/empty'), { recursive: true }) // no package.json
+        it('supports explicit paths (no wildcard)', () => withTmpDir(dir => {
+            vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
+            fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/core"\n')
+            createPackage(path.join(dir, 'packages/core'), 'core', '1.0.0')
 
-            const spy = vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
-            const result = AutoGit.getWorkspacePackages(tmpDir)
+            expect(AutoGit.getWorkspacePackages(dir)).toHaveLength(1)
+        }))
 
-            expect(result).toHaveLength(1)
-            expect(result[0]).toBe(path.resolve(tmpDir, 'packages/core'))
-        })
+        it('supports recursive ** globs', () => withTmpDir(dir => {
+            vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
+            fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/**"\n')
+            createPackage(path.join(dir, 'packages/a'), 'a', '1.0.0')
+            createPackage(path.join(dir, 'packages/nested/b'), 'b', '1.0.0')
 
-        it('should support packages listed without a wildcard', () => {
-            fs.writeFileSync(path.join(tmpDir, 'pnpm-workspace.yaml'), 'packages:\n  - "packages/core"\n')
-            createPackage(path.join(tmpDir, 'packages/core'), '@scope/core', '1.0.0')
+            const result = AutoGit.getWorkspacePackages(dir)
+            expect(result).toHaveLength(2)
+        }))
 
-            const spy = vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
-            const result = AutoGit.getWorkspacePackages(tmpDir)
+        it('skips comments and ! exclusion patterns', () => withTmpDir(dir => {
+            vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
+            fs.writeFileSync(path.join(dir, 'pnpm-workspace.yaml'),
+                '# header\npackages:\n  # comment\n  - "packages/*"\n  - "!packages/skip"\n')
+            createPackage(path.join(dir, 'packages/a'), 'a', '1.0.0')
 
-            expect(result).toHaveLength(1)
-        })
+            const result = AutoGit.getWorkspacePackages(dir)
+            expect(result).toContain(path.resolve(dir, 'packages/a'))
+        }))
 
-        it('should return an empty array when pnpm-workspace.yaml is absent', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
-            expect(AutoGit.getWorkspacePackages(tmpDir)).toEqual([])
-        })
+        it('returns [] when no pnpm-workspace.yaml', () => withTmpDir(dir => {
+            vi.spyOn(AutoGit, 'exec').mockImplementation(() => { throw new Error() })
+            expect(AutoGit.getWorkspacePackages(dir)).toEqual([])
+        }))
     })
 
-    describe('bumpWorkspace', () => {
-        let tmpDir
-        beforeEach(() => { tmpDir = mkTmpDir() })
-        afterEach(() => { cleanDir(tmpDir) })
+    // --- Bump workspace ---
 
-        const setup = packages => {
-            packages.forEach(({ dir, name, version }) => createPackage(path.join(tmpDir, dir), name, version))
-            return vi.spyOn(AutoGit, 'getWorkspacePackages').mockReturnValue(
-                packages.map(p => path.join(tmpDir, p.dir))
+    describe('bumpWorkspace', () => {
+        const setupWorkspace = (dir, packages) => {
+            packages.forEach(p => createPackage(path.join(dir, p.dir), p.name, p.version, p.deps))
+            vi.spyOn(AutoGit, 'getWorkspacePackages').mockReturnValue(
+                packages.map(p => path.join(dir, p.dir))
             )
         }
 
-        it('should bump all packages at patch level', () => {
-            const spy = setup([
-                { dir: 'packages/core', name: '@scope/core', version: '1.0.0' },
-                { dir: 'packages/cli', name: '@scope/cli', version: '1.2.3' }
+        it.each([
+            ['patch', '1.2.3', '1.2.4'],
+            ['minor', '1.2.3', '1.3.0'],
+            ['major', '1.2.3', '2.0.0'],
+        ])('bumps at %s level: %s => %s', (level, from, expected) => withTmpDir(dir => {
+            setupWorkspace(dir, [{ dir: 'packages/a', name: 'a', version: from }])
+            expect(AutoGit.bumpWorkspace(level, dir)['a']).toBe(expected)
+        }))
+
+        it('updates internal cross-references preserving range prefix', () => withTmpDir(dir => {
+            setupWorkspace(dir, [
+                { dir: 'packages/core', name: '@s/core', version: '1.0.0' },
+                { dir: 'packages/cli', name: '@s/cli', version: '1.0.0', deps: { '@s/core': '~1.0.0' } }
             ])
 
-            const results = AutoGit.bumpWorkspace('patch', tmpDir)
+            AutoGit.bumpWorkspace('minor', dir)
 
-            expect(results['@scope/core']).toBe('1.0.1')
-            expect(results['@scope/cli']).toBe('1.2.4')
-        })
+            const cli = JSON.parse(fs.readFileSync(path.join(dir, 'packages/cli/package.json'), 'utf-8'))
+            expect(cli.dependencies['@s/core']).toBe('~1.1.0')
+        }))
 
-        it('should bump all packages at minor level and reset patch', () => {
-            const spy = setup([{ dir: 'packages/core', name: '@scope/core', version: '1.2.3' }])
-            const results = AutoGit.bumpWorkspace('minor', tmpDir)
-
-            expect(results['@scope/core']).toBe('1.3.0')
-        })
-
-        it('should bump all packages at major level and reset minor + patch', () => {
-            const spy = setup([{ dir: 'packages/core', name: '@scope/core', version: '1.2.3' }])
-            const results = AutoGit.bumpWorkspace('major', tmpDir)
-
-            expect(results['@scope/core']).toBe('2.0.0')
-        })
-
-        it('should write the new version to the package.json file', () => {
-            const spy = setup([{ dir: 'packages/core', name: '@scope/core', version: '1.0.0' }])
-            AutoGit.bumpWorkspace('patch', tmpDir)
-
-            const written = JSON.parse(fs.readFileSync(path.join(tmpDir, 'packages/core/package.json'), 'utf-8'))
-            expect(written.version).toBe('1.0.1')
-        })
-
-        it('should return an empty object when there are no packages', () => {
-            const spy = vi.spyOn(AutoGit, 'getWorkspacePackages').mockReturnValue([])
-            const results = AutoGit.bumpWorkspace('patch', tmpDir)
-
-            expect(results).toEqual({})
+        it('returns {} when no packages', () => {
+            vi.spyOn(AutoGit, 'getWorkspacePackages').mockReturnValue([])
+            expect(AutoGit.bumpWorkspace('patch')).toEqual({})
         })
     })
+
+    // --- Tag ---
 
     describe('tag', () => {
-        it('should not use a default prefix', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            const tagName = AutoGit.tag('1.2.3')
-
-            expect(tagName).toBe('1.2.3')
+        it.each([
+            ['1.2.3', '', '1.2.3'],
+            ['1.2.3', 'v', 'v1.2.3'],
+            ['1.2.3', 'release-', 'release-1.2.3'],
+        ])('tag("%s", "%s") => "%s"', (version, prefix, expected) => {
+            mockTagExec()
+            expect(AutoGit.tag(version, prefix)).toBe(expected)
         })
 
-        it('should support a custom prefix', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            const tagName = AutoGit.tag('1.2.3', 'release-')
-
-            expect(tagName).toBe('release-1.2.3')
-        })
-
-        it('should support an empty prefix', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            const tagName = AutoGit.tag('1.2.3', '')
-
-            expect(tagName).toBe('1.2.3')
-        })
-
-        it('should call git tag with the annotated flag', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
+        it('calls git tag -a with annotated message', () => {
+            const spy = mockTagExec()
             AutoGit.tag('1.2.3')
+            expect(spy).toHaveBeenCalledWith('git', ['tag', '-a', '1.2.3', '-m', 'Release 1.2.3'], undefined)
+        })
 
-            expect(spy).toHaveBeenCalledWith(expect.stringContaining('git tag -a 1.2.3'), undefined)
+        it('throws when tag already exists', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockReturnValue('abc123')
+            expect(() => AutoGit.tag('1.2.3')).toThrow('already exists')
         })
     })
+
+    // --- Commit ---
 
     describe('commit', () => {
-        it('should default the message to "{prefix}{version}"', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            AutoGit.commit({ version: '1.2.3' })
-
-            expect(spy).toHaveBeenCalledWith(expect.stringContaining('"1.2.3"'), undefined)
+        it.each([
+            [{ version: '1.2.3' }, '1.2.3'],
+            [{ version: '1.2.3', prefix: 'v' }, 'v1.2.3'],
+            [{ version: '1.2.3', message: 'custom msg' }, 'custom msg'],
+            [{ version: '1.2.3', prefix: 'v', message: 'override' }, 'override'],
+        ])('commit(%j) => message "%s"', (options, expectedMsg) => {
+            const spy = vi.spyOn(AutoGit, 'execSafe').mockReturnValue('')
+            AutoGit.commit(options)
+            expect(spy).toHaveBeenCalledWith('git', ['commit', '-m', expectedMsg], undefined)
         })
 
-        it('should use a custom prefix in the auto message', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            AutoGit.commit({ version: '1.2.3', prefix: 'release-' })
-
-            expect(spy).toHaveBeenCalledWith(expect.stringContaining('"release-1.2.3"'), undefined)
-        })
-
-        it('should use the custom message when provided', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            AutoGit.commit({ version: '1.2.3', message: 'chore: bump version' })
-
-            expect(spy).toHaveBeenCalledWith(expect.stringContaining('"chore: bump version"'), undefined)
-        })
-
-        it('should ignore prefix when a custom message is provided', () => {
-            const spy = vi.spyOn(AutoGit, 'exec').mockReturnValue('')
-            AutoGit.commit({ version: '1.2.3', prefix: 'release-', message: 'custom' })
-
-            expect(spy).toHaveBeenCalledWith(expect.stringContaining('"custom"'), undefined)
-            expect(spy).not.toHaveBeenCalledWith(expect.stringContaining('release-'), undefined)
+        it('is safe against shell injection', () => {
+            const spy = vi.spyOn(AutoGit, 'execSafe').mockReturnValue('')
+            AutoGit.commit({ version: '1.0.0', message: '$(rm -rf /)' })
+            expect(spy).toHaveBeenCalledWith('git', ['commit', '-m', '$(rm -rf /)'], undefined)
         })
     })
 
+    // --- Push ---
+
+    describe('push', () => {
+        it('throws when no remote configured', () => {
+            vi.spyOn(AutoGit, 'execSafe').mockReturnValue('')
+            expect(() => AutoGit.push()).toThrow('No git remote configured')
+        })
+
+        it('pushes commits and tags', () => {
+            const spy = vi.spyOn(AutoGit, 'execSafe')
+                .mockReturnValueOnce('origin')
+                .mockReturnValueOnce('')
+                .mockReturnValueOnce('')
+            AutoGit.push('/p')
+            expect(spy).toHaveBeenCalledWith('git', ['push'], '/p')
+            expect(spy).toHaveBeenCalledWith('git', ['push', '--tags'], '/p')
+        })
+    })
+
+    // --- Stage files ---
+
+    describe('stageFiles', () => {
+        it('stages specific files with --', () => {
+            const spy = vi.spyOn(AutoGit, 'execSafe').mockReturnValue('')
+            AutoGit.stageFiles(['a.json', 'b.json'], '/p')
+            expect(spy).toHaveBeenCalledWith('git', ['add', '--', 'a.json', 'b.json'], '/p')
+        })
+    })
+
+    // --- Release ---
+
     describe('release', () => {
-        it('should throw when not in a git repository', () => {
-            const spy = vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(false)
-            expect(() => AutoGit.release({ version: '1.2.3' })).toThrow('Not a git repository')
+        it('throws outside a git repo', () => {
+            vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(false)
+            expect(() => AutoGit.release({ version: '1.0.0' })).toThrow('Not a git repository')
         })
 
-        it('should run stage, commit, and tag in sequence', () => {
-            const spyIsGit = vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(true)
-            const spyStage = vi.spyOn(AutoGit, 'stageAll').mockReturnValue(undefined)
-            const spyCommit = vi.spyOn(AutoGit, 'commit').mockReturnValue(undefined)
-            const spyTag = vi.spyOn(AutoGit, 'tag').mockReturnValue('1.2.3')
+        it('stages all, commits, and tags by default', () => {
+            const m = mockRelease()
+            const tag = AutoGit.release({ version: '1.2.3' })
 
-            const tagName = AutoGit.release({ version: '1.2.3' })
-
-            expect(spyStage).toHaveBeenCalled()
-            expect(spyCommit).toHaveBeenCalled()
-            expect(spyTag).toHaveBeenCalledWith('1.2.3', '', undefined)
-            expect(tagName).toBe('1.2.3')
+            expect(m.stageAll).toHaveBeenCalled()
+            expect(m.commit).toHaveBeenCalled()
+            expect(m.tag).toHaveBeenCalledWith('1.2.3', '', undefined)
+            expect(tag).toBe('1.2.3')
         })
 
-        it('should push when the push option is true', () => {
-            const spyIsGit = vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(true)
-            const spyStage = vi.spyOn(AutoGit, 'stageAll').mockReturnValue(undefined)
-            const spyCommit = vi.spyOn(AutoGit, 'commit').mockReturnValue(undefined)
-            const spyTag = vi.spyOn(AutoGit, 'tag').mockReturnValue('1.2.3')
-            const spyPush = vi.spyOn(AutoGit, 'push').mockReturnValue(undefined)
+        it('uses stageFiles when files are provided', () => {
+            const m = mockRelease()
+            AutoGit.release({ version: '1.2.3' }, ['package.json'])
 
-            AutoGit.release({ version: '1.2.3', push: true })
-
-            expect(spyPush).toHaveBeenCalled()
+            expect(m.stageFiles).toHaveBeenCalledWith(['package.json'], undefined)
+            expect(m.stageAll).not.toHaveBeenCalled()
         })
 
-        it('should not push when push is false', () => {
-            const spyIsGit = vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(true)
-            const spyStage = vi.spyOn(AutoGit, 'stageAll').mockReturnValue(undefined)
-            const spyCommit = vi.spyOn(AutoGit, 'commit').mockReturnValue(undefined)
-            const spyTag = vi.spyOn(AutoGit, 'tag').mockReturnValue('1.2.3')
-            const spyPush = vi.spyOn(AutoGit, 'push').mockReturnValue(undefined)
-
+        it('pushes only when push=true', () => {
+            const m = mockRelease()
             AutoGit.release({ version: '1.2.3', push: false })
+            expect(m.push).not.toHaveBeenCalled()
 
-            expect(spyPush).not.toHaveBeenCalled()
+            vi.restoreAllMocks()
+            const m2 = mockRelease()
+            AutoGit.release({ version: '1.2.3', push: true })
+            expect(m2.push).toHaveBeenCalled()
         })
 
-        it('should forward the prefix to commit and tag', () => {
-            const spyIsGit = vi.spyOn(AutoGit, 'isGitRepo').mockReturnValue(true)
-            const spyStage = vi.spyOn(AutoGit, 'stageAll').mockReturnValue(undefined)
-            const spyCommit = vi.spyOn(AutoGit, 'commit').mockReturnValue(undefined)
-            const spyTag = vi.spyOn(AutoGit, 'tag').mockReturnValue('release-1.2.3')
+        it('forwards prefix to commit and tag', () => {
+            const m = mockRelease({ tagName: 'v1.2.3' })
+            AutoGit.release({ version: '1.2.3', prefix: 'v' })
 
-            AutoGit.release({ version: '1.2.3', prefix: 'release-' })
-
-            expect(spyTag).toHaveBeenCalledWith('1.2.3', 'release-', undefined)
-            expect(spyCommit).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'release-' }))
+            expect(m.tag).toHaveBeenCalledWith('1.2.3', 'v', undefined)
+            expect(m.commit).toHaveBeenCalledWith(expect.objectContaining({ prefix: 'v' }))
         })
+    })
+
+    // --- Detect indentation ---
+
+    describe('detectIndentation', () => {
+        it.each([
+            [2, 2],
+            [4, 4],
+            ['\t', '\t'],
+        ])('detects indent=%s', (indent, expected) => withTmpDir(dir => {
+            const f = path.join(dir, 'p.json')
+            fs.writeFileSync(f, JSON.stringify({ a: 1 }, null, indent))
+            expect(AutoGit.detectIndentation(f)).toBe(expected)
+        }))
+
+        it('defaults to 4 for minified JSON', () => withTmpDir(dir => {
+            const f = path.join(dir, 'p.json')
+            fs.writeFileSync(f, '{}')
+            expect(AutoGit.detectIndentation(f)).toBe(4)
+        }))
     })
 })

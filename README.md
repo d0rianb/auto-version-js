@@ -13,10 +13,10 @@ npm i -D auto-version-js
 
 Then to increment the version number, simply run :
 ```bash
-npx auto-version --patch  # +0.0.1
-npx auto-version --minor  # +0.1.0
-npx auto-version --major  # +1.0.0
-npx auto-version          # no args is equivalent to --patch
+npx auto-version patch  # +0.0.1
+npx auto-version minor  # +0.1.0
+npx auto-version major  # +1.0.0
+npx auto-version        # no command is equivalent to patch
 ```
 
 To implement it in your `package.json` file :

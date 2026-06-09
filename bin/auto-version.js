@@ -2,12 +2,12 @@
 
 const AutoVersion = require('../lib/main.js')
 
-const HELP = `Usage: auto-version [level] [options]
+const HELP = `Usage: auto-version [command] [options]
 
-Levels:
-  --patch                 Increment the patch version (default)
-  --minor                 Increment the minor version
-  --major                 Increment the major version
+Commands:
+  patch                   Increment the patch version (default)
+  minor                   Increment the minor version
+  major                   Increment the major version
 
 Options:
   -g, --get               Print the current version without changing it
@@ -37,29 +37,27 @@ const readValue = (argv, index, option) => {
 }
 
 const parseArgs = argv => {
+    const command = argv[0] && !argv[0].startsWith('-') ? argv[0] : 'patch'
+
+    if (!['major', 'minor', 'patch'].includes(command)) {
+        throw new Error(`Unknown command: ${command}`)
+    }
+
     const options = {
-        mode: 'patch',
+        mode: command,
         // Commit & tag by default
         prefix: '',
         commit: true,
         tag: true
     }
 
-    for (let index = 0; index < argv.length; index++) {
+    const optionStart = command === argv[0] ? 1 : 0
+
+    for (let index = optionStart; index < argv.length; index++) {
         const argument = argv[index]
         const option = argument.split('=')[0]
 
-        if (['major', 'minor', 'patch'].includes(argument)) {
-            options.mode = argument
-            continue
-        }
-
         switch (option) {
-            case '--major':
-            case '--minor':
-            case '--patch':
-                options.mode = option.slice(2)
-                break
             case '-g':
             case '--get':
                 options.get = true
