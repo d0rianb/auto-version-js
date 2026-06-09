@@ -12,9 +12,9 @@ Levels:
 Options:
   -g, --get               Print the current version without changing it
   -c, --commit            Stage files and commit the new version
-  -t, --tag               Create an annotated tag for the new version
+  -t, --tag               Create an annotated tag (requires --commit)
   -r, --release           Stage, commit, and tag the new version
-      --push              Push commits and tags
+      --push              Push commits and tags (requires --commit)
   -w, --workspace         Increment all pnpm workspace packages
       --prefix <value>    Prefix for commit messages and tags (default: none)
   -m, --message <value>   Custom commit message
@@ -118,6 +118,10 @@ const run = (argv, dependencies = {}) => {
     if (options.help) {
         log(HELP)
         return
+    }
+
+    if (!options.release && !options.commit && (options.tag || options.push)) {
+        throw new Error('--tag and --push require --commit or --release')
     }
 
     const version = autoVersion.getVersion()

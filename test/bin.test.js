@@ -93,6 +93,24 @@ describe('auto-version CLI', () => {
         expect(dependencies.AutoGit.tag).toHaveBeenCalledWith('1.2.4', 'release-')
     })
 
+    it.each(['--tag', '--push'])('rejects %s without a commit', option => {
+        const dependencies = createDependencies()
+
+        expect(() => run([option], dependencies))
+            .toThrow('--tag and --push require --commit or --release')
+        expect(dependencies.AutoVersion.getVersion).not.toHaveBeenCalled()
+        expect(dependencies.AutoVersion.setVersion).not.toHaveBeenCalled()
+    })
+
+    it('allows push after a separate commit', () => {
+        const dependencies = createDependencies()
+
+        run(['--commit', '--push'], dependencies)
+
+        expect(dependencies.AutoGit.commit).toHaveBeenCalled()
+        expect(dependencies.AutoGit.push).toHaveBeenCalled()
+    })
+
     it('increments pnpm workspace packages when requested', () => {
         const dependencies = createDependencies()
 
